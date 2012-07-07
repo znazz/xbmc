@@ -33,6 +33,7 @@
 #include "cores/VideoRenderers/RenderFlags.h"
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/GUIWindowManager.h"
+#include "pvr/channels/PVRChannel.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/GUISettings.h"
 #include "settings/Settings.h"
@@ -73,6 +74,7 @@
 
 #include "LangInfo.h"
 
+using namespace PVR;
 using namespace XFILE;
 
 // ****************************************************************
@@ -2068,6 +2070,7 @@ void COMXPlayer::HandleMessages()
       }
       else if (pMsg->IsType(CDVDMsg::PLAYER_CHANNEL_NEXT) ||
                pMsg->IsType(CDVDMsg::PLAYER_CHANNEL_PREV) ||
+              (pMsg->IsType(CDVDMsg::PLAYER_CHANNEL_SELECT_NUMBER) && m_messenger.GetPacketCount(CDVDMsg::PLAYER_CHANNEL_SELECT_NUMBER) == 0) ||
               (pMsg->IsType(CDVDMsg::PLAYER_CHANNEL_SELECT) && m_messenger.GetPacketCount(CDVDMsg::PLAYER_CHANNEL_SELECT) == 0))
       {
         CDVDInputStream::IChannel* input = dynamic_cast<CDVDInputStream::IChannel*>(m_pInputStream);
@@ -2076,8 +2079,10 @@ void COMXPlayer::HandleMessages()
           g_infoManager.SetDisplayAfterSeek(100000);
 
           bool result;
+          if (pMsg->IsType(CDVDMsg::PLAYER_CHANNEL_SELECT_NUMBER))
+            result = input->SelectChannelByNumber(static_cast<CDVDMsgInt*>(pMsg)->m_value);
           if (pMsg->IsType(CDVDMsg::PLAYER_CHANNEL_SELECT))
-            result = input->SelectChannel(static_cast<CDVDMsgInt*>(pMsg)->m_value);
+            result = input->SelectChannel(static_cast<CDVDMsgType <CPVRChannel> *>(pMsg)->m_value);
           else if(pMsg->IsType(CDVDMsg::PLAYER_CHANNEL_NEXT))
             result = input->NextChannel();
           else
@@ -3290,7 +3295,7 @@ bool COMXPlayer::OnAction(const CAction &action)
       {
         // Offset from key codes back to button number
         int channel = action.GetAmount();
-        m_messenger.Put(new CDVDMsgInt(CDVDMsg::PLAYER_CHANNEL_SELECT, channel));
+        m_messenger.Put(new CDVDMsgInt(CDVDMsg::PLAYER_CHANNEL_SELECT_NUMBER, channel));
         g_infoManager.SetDisplayAfterSeek();
         return true;
       }
