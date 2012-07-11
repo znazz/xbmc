@@ -27,7 +27,7 @@
 #if defined(TARGET_WINDOWS)
   #include "Sinks/AESinkWASAPI.h"
   #include "Sinks/AESinkDirectSound.h"
-#elif defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
+#elif (defined(TARGET_LINUX) || defined(TARGET_FREEBSD)) && !defined(TARGET_RASPBERRY_PI)
   #if defined(HAS_ALSA)
     #include "Sinks/AESinkALSA.h"
   #endif
@@ -105,7 +105,7 @@ IAESink *CAESinkFactory::Create(std::string &device, AEAudioFormat &desiredForma
   else
     TRY_SINK(DirectSound) /* Always fall back to DirectSound */
 
-#elif defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
+#elif (defined(TARGET_LINUX) || defined(TARGET_FREEBSD)) && !defined(TARGET_RASPBERRY_PI)
 
   #if defined(HAS_ALSA)
   if (driver.empty() || driver == "ALSA")
@@ -153,7 +153,7 @@ void CAESinkFactory::EnumerateEx(AESinkInfoList &list)
   ENUMERATE_SINK(ALSA);
 #endif
 
-#if defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
+#if (defined(TARGET_LINUX) || defined(TARGET_FREEBSD)) && !defined(TARGET_RASPBERRY_PI)
   ENUMERATE_SINK(OSS);
 #endif
 

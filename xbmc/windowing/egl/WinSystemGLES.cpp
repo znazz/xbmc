@@ -27,7 +27,6 @@
 #include "settings/Settings.h"
 #include "guilib/Texture.h"
 #include "utils/log.h"
-#include "WinBindingEGL.h"
 
 #include <vector>
 
@@ -35,29 +34,20 @@
 CWinSystemGLES::CWinSystemGLES() : CWinSystemBase()
 {
   m_window = NULL;
-  m_eglBinding = new CWinBindingEGL();
+  m_eglplatform = new CWinEGLPlatform();
   m_eWindowSystem = WINDOW_SYSTEM_EGL;
 }
 
 CWinSystemGLES::~CWinSystemGLES()
 {
   DestroyWindowSystem();
-  delete m_eglBinding;
+  delete m_eglplatform;
 }
 
 bool CWinSystemGLES::InitWindowSystem()
 {
-  m_fb_width  = 1280;
-  m_fb_height = 720;
-  m_fb_bpp    = 8;
-
-  CLog::Log(LOGDEBUG, "Video mode: %dx%d with %d bits per pixel.",
-    m_fb_width, m_fb_height, m_fb_bpp);
-
   m_display = EGL_DEFAULT_DISPLAY;
-  m_window  = (fbdev_window*)calloc(1, sizeof(fbdev_window));
-	m_window->width  = m_fb_width;
-	m_window->height = m_fb_height;
+  m_window = m_eglplatform->InitWindowSystem(m_display, 1920, 1080, 8);
 
   if (!CWinSystemBase::InitWindowSystem())
     return false;
@@ -67,7 +57,7 @@ bool CWinSystemGLES::InitWindowSystem()
 
 bool CWinSystemGLES::DestroyWindowSystem()
 {
-  free(m_window);
+  m_eglplatform->DestroyWindowSystem(m_window);
   m_window = NULL;
 
   return true;
@@ -75,11 +65,25 @@ bool CWinSystemGLES::DestroyWindowSystem()
 
 bool CWinSystemGLES::CreateNewWindow(const CStdString& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction)
 {
+  if (m_bWindowCreated && m_nWidth == res.iWidth && m_nHeight == res.iHeight && m_fRefreshRate == res.fRefreshRate && m_bFullScreen == fullScreen)
+  {
+    CLog::Log(LOGDEBUG, "CWinSystemGLES::CreateNewWindow: No need to create a new window");
+    return true;
+  }
+
   m_nWidth  = res.iWidth;
   m_nHeight = res.iHeight;
   m_bFullScreen = fullScreen;
+  m_fRefreshRate = res.fRefreshRate;
+  
+  if (m_bWindowCreated)
+    m_eglplatform->ReleaseSurface();
 
-  if (!m_eglBinding->CreateWindow((EGLNativeDisplayType)m_display, (EGLNativeWindowType)m_window))
+  // temp until split gui/display res comes in
+  //m_eglplatform->SetDisplayResolution(res.iScreenWidth, res.iScreenHeight,
+  m_eglplatform->SetDisplayResolution(res);
+
+  if (!m_eglplatform->CreateSurface())
     return false;
 
   m_bWindowCreated = true;
@@ -89,7 +93,7 @@ bool CWinSystemGLES::CreateNewWindow(const CStdString& name, bool fullScreen, RE
 
 bool CWinSystemGLES::DestroyWindow()
 {
-  if (!m_eglBinding->DestroyWindow())
+  if (!m_eglplatform->DestroyWindow())
     return false;
 
   m_bWindowCreated = false;
@@ -105,12 +109,7 @@ bool CWinSystemGLES::ResizeWindow(int newWidth, int newHeight, int newLeft, int 
 
 bool CWinSystemGLES::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
-  CLog::Log(LOGDEBUG, "CWinSystemDFB::SetFullScreen");
-  m_nWidth  = res.iWidth;
-  m_nHeight = res.iHeight;
-  m_bFullScreen = fullScreen;
-
-  m_eglBinding->ReleaseSurface();
+  CLog::Log(LOGDEBUG, "CWinSystemGLES::SetFullScreen");
   CreateNewWindow("", fullScreen, res, NULL);
 
   CRenderSystemGLES::ResetRenderSystem(res.iWidth, res.iHeight, true, 0);
@@ -122,9 +121,71 @@ void CWinSystemGLES::UpdateResolutions()
 {
   CWinSystemBase::UpdateResolutions();
 
-  int w = 1280;
-  int h = 720;
-  UpdateDesktopResolution(g_settings.m_ResInfo[RES_DESKTOP], 0, w, h, 0.0);
+  //std::vector<CStdString> resolutions;
+  std::vector<RESOLUTION_INFO> resolutions;
+
+  m_eglplatform->ProbeDisplayResolutions(resolutions);
+
+  RESOLUTION_INFO resDesktop = m_eglplatform->GetDesktopRes();
+
+  RESOLUTION ResDesktop = RES_INVALID;
+  RESOLUTION res_index  = RES_DESKTOP;
+
+  // Clear old resolutions
+  //g_settings.m_ResInfo.clear();
+
+  for (size_t i = 0; i < resolutions.size(); i++)
+  {
+    int gui_width  = resolutions[i].iWidth;
+    int gui_height = resolutions[i].iHeight;
+
+    m_eglplatform->ClampToGUIDisplayLimits(gui_width, gui_height);
+  
+    resolutions[i].iWidth = gui_width;
+    resolutions[i].iHeight = gui_height;
+
+    // if this is a new setting,
+    // create a new empty setting to fill in.
+    if ((int)g_settings.m_ResInfo.size() <= res_index)
+    {
+      RESOLUTION_INFO res;
+
+      g_settings.m_ResInfo.push_back(res);
+    }
+
+    g_graphicsContext.ResetOverscan(resolutions[i]);
+    g_settings.m_ResInfo[res_index] = resolutions[i];
+
+    CLog::Log(LOGNOTICE, "Found resolution for display %d with %d x %d @ %f Hz\n",
+      resolutions[i].iScreen,
+      resolutions[i].iScreenWidth,
+      resolutions[i].iScreenHeight,
+      resolutions[i].fRefreshRate);
+
+    if(m_eglplatform->FixedDesktop())
+    {
+      if(resDesktop.iWidth == resolutions[i].iWidth &&
+         resDesktop.iHeight == resolutions[i].iHeight &&
+         resDesktop.fRefreshRate == resolutions[i].fRefreshRate)
+      {
+        ResDesktop = res_index;
+      }
+    }
+
+    res_index = (RESOLUTION)((int)res_index + 1);
+  }
+
+  // swap desktop index for desktop res if available
+
+  if (ResDesktop != RES_INVALID)
+  {
+    CLog::Log(LOGNOTICE, "Found (%dx%d@%f) at %d, setting to RES_DESKTOP at %d", 
+              resDesktop.iWidth, resDesktop.iHeight, resDesktop.fRefreshRate, (int)ResDesktop, (int)RES_DESKTOP);
+
+    RESOLUTION_INFO desktop = g_settings.m_ResInfo[RES_DESKTOP];
+    g_settings.m_ResInfo[RES_DESKTOP] = g_settings.m_ResInfo[ResDesktop];
+    g_settings.m_ResInfo[ResDesktop] = desktop;
+  }
 }
 
 bool CWinSystemGLES::IsExtSupported(const char* extension)
@@ -132,12 +193,12 @@ bool CWinSystemGLES::IsExtSupported(const char* extension)
   if(strncmp(extension, "EGL_", 4) != 0)
     return CRenderSystemGLES::IsExtSupported(extension);
 
-  return m_eglBinding->IsExtSupported(extension);
+  return m_eglplatform->IsExtSupported(extension);
 }
 
 bool CWinSystemGLES::PresentRenderImpl(const CDirtyRegionList &dirty)
 {
-  m_eglBinding->SwapBuffers();
+  m_eglplatform->SwapBuffers();
 
   return true;
 }
@@ -145,7 +206,7 @@ bool CWinSystemGLES::PresentRenderImpl(const CDirtyRegionList &dirty)
 void CWinSystemGLES::SetVSyncImpl(bool enable)
 {
   m_iVSyncMode = enable ? 10 : 0;
-  if (m_eglBinding->SetVSync(enable) == FALSE)
+  if (m_eglplatform->SetVSync(enable) == FALSE)
     CLog::Log(LOGERROR, "CWinSystemDFB::SetVSyncImpl: Could not set egl vsync");
 }
 
@@ -171,12 +232,58 @@ bool CWinSystemGLES::Restore()
 
 bool CWinSystemGLES::Hide()
 {
-  return true;
+  return m_eglplatform->ShowWindow(false);
 }
 
 bool CWinSystemGLES::Show(bool raise)
 {
-  return true;
+  return m_eglplatform->ShowWindow(true);
+}
+
+EGLContext CWinSystemGLES::GetEGLContext() const
+{
+  return m_eglplatform->GetContext();
+}
+
+EGLContext CWinSystemGLES::GetEGLSurface() const
+{
+  return m_eglplatform->GetSurface();
+}
+
+EGLDisplay CWinSystemGLES::GetEGLDisplay() const
+{
+  return m_eglplatform->GetDisplay();
+}
+
+bool CWinSystemGLES::Support3D(int width, int height, uint32_t mode) const
+{
+  bool bFound = false;
+  int searchMode = 0;
+  int searchWidth = width;
+  int searchHeight = height;
+
+  if(mode & D3DPRESENTFLAG_MODE3DSBS)
+  {
+    searchWidth /= 2;
+    searchMode = D3DPRESENTFLAG_MODE3DSBS;
+  }
+  else if(mode & D3DPRESENTFLAG_MODE3DTB)
+  {
+    searchHeight /= 2;
+    searchMode = D3DPRESENTFLAG_MODE3DTB;
+  }
+
+  for(int i = 0; i < g_settings.m_ResInfo.size(); i++)
+  {
+    RESOLUTION_INFO res = g_settings.m_ResInfo[i];
+
+    if(res.iWidth == searchWidth && res.iHeight == searchHeight && (res.dwFlags & searchMode))
+    {
+      return true;
+    }
+  }
+
+  return bFound;
 }
 
 #endif

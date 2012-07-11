@@ -293,6 +293,8 @@ void CWinSystemX11GLES::UpdateResolutions()
       RESOLUTION_INFO res;
       res.iWidth  = mode.w;
       res.iHeight = mode.h;
+      res.iScreenWidth  = mode.w;
+      res.iScreenHeight = mode.h;
       if (mode.h>0 && mode.w>0 && out.hmm>0 && out.wmm>0)
         res.fPixelRatio = ((float)out.wmm/(float)mode.w) / (((float)out.hmm/(float)mode.h));
       else
@@ -404,7 +406,6 @@ bool CWinSystemX11GLES::RefreshEGLContext()
 
 bool CWinSystemX11GLES::PresentRenderImpl(const CDirtyRegionList &dirty)
 {
-//  glFinish();	// Needed???
   eglSwapBuffers(m_eglDisplay, m_eglSurface);
 
   return true;

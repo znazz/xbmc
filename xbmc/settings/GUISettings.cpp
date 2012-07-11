@@ -385,7 +385,7 @@ void CGUISettings::Initialize()
 
   // this setting would ideally not be saved, as its value is systematically derived from videoscreen.screenmode.
   // contains a DISPLAYMODE
-#if !defined(TARGET_DARWIN_IOS_ATV2)
+#if !defined(TARGET_DARWIN_IOS_ATV2) && !defined(TARGET_RASPBERRY_PI)
   AddInt(vs, "videoscreen.screen", 240, 0, -1, 1, 32, SPIN_CONTROL_TEXT);
 #endif
   // this setting would ideally not be saved, as its value is systematically derived from videoscreen.screenmode.
@@ -448,9 +448,15 @@ void CGUISettings::Initialize()
 
   map<int,int> audiomode;
   audiomode.insert(make_pair(338,AUDIO_ANALOG));
+#if !defined(TARGET_RASPBERRY_PI)
   audiomode.insert(make_pair(339,AUDIO_IEC958));
+#endif
   audiomode.insert(make_pair(420,AUDIO_HDMI  ));
+#if defined(TARGET_RASPBERRY_PI)
+  AddInt(ao, "audiooutput.mode", 337, AUDIO_HDMI, audiomode, SPIN_CONTROL_TEXT);
+#else
   AddInt(ao, "audiooutput.mode", 337, AUDIO_ANALOG, audiomode, SPIN_CONTROL_TEXT);
+#endif
 
   map<int,int> channelLayout;
   for(int layout = AE_CH_LAYOUT_2_0; layout < AE_CH_LAYOUT_MAX; ++layout)
@@ -469,13 +475,13 @@ void CGUISettings::Initialize()
   AddBool(aocat, "audiooutput.dtspassthrough"   , 254, true);
 
 
-#if !defined(TARGET_DARWIN)
+#if !defined(TARGET_DARWIN) && !defined(TARGET_RASPBERRY_PI)
   AddBool(aocat, "audiooutput.passthroughaac"   , 299, false);
 #endif
-#if !defined(TARGET_DARWIN_IOS)
+#if !defined(TARGET_DARWIN_IOS) && !defined(TARGET_RASPBERRY_PI)
   AddBool(aocat, "audiooutput.multichannellpcm" , 348, true );
 #endif
-#if !defined(TARGET_DARWIN)
+#if !defined(TARGET_DARWIN) && !defined(TARGET_RASPBERRY_PI)
   AddBool(aocat, "audiooutput.truehdpassthrough", 349, true );
   AddBool(aocat, "audiooutput.dtshdpassthrough" , 347, true );
 #endif
@@ -488,6 +494,10 @@ void CGUISettings::Initialize()
     CCoreAudioHardware::GetOutputDeviceName(defaultDeviceName);
   #endif
   AddString(ao, "audiooutput.audiodevice", 545, defaultDeviceName.c_str(), SPIN_CONTROL_TEXT);
+  AddString(NULL, "audiooutput.passthroughdevice", 546, defaultDeviceName.c_str(), SPIN_CONTROL_TEXT);
+#elif defined(TARGET_RASPBERRY_PI)
+  CStdString defaultDeviceName = "Default";
+  AddString(NULL, "audiooutput.audiodevice", 545, defaultDeviceName.c_str(), SPIN_CONTROL_TEXT);
   AddString(NULL, "audiooutput.passthroughdevice", 546, defaultDeviceName.c_str(), SPIN_CONTROL_TEXT);
 #else
   AddSeparator(ao, "audiooutput.sep1");
@@ -689,7 +699,11 @@ void CGUISettings::Initialize()
   //AddInt(5, "videoplayer.displayresolution", 169, (int)RES_AUTORES, (int)RES_AUTORES, 1, (int)CUSTOM+MAX_RESOLUTIONS, SPIN_CONTROL_TEXT);
   AddInt(NULL, "videoplayer.displayresolution", 169, (int)RES_AUTORES, (int)RES_AUTORES, 1, (int)RES_AUTORES, SPIN_CONTROL_TEXT);
 #if !defined(TARGET_DARWIN_IOS)
+#if defined(TARGET_RASPBERRY_PI)
+  AddBool(vp, "videoplayer.adjustrefreshrate", 170, true);
+#else
   AddBool(vp, "videoplayer.adjustrefreshrate", 170, false);
+#endif
   AddInt(vp, "videoplayer.pauseafterrefreshchange", 13550, 0, 0, 1, MAXREFRESHCHANGEDELAY, SPIN_CONTROL_TEXT);
 #else
   AddBool(NULL, "videoplayer.adjustrefreshrate", 170, false);
@@ -1486,7 +1500,7 @@ RESOLUTION CGUISettings::GetResFromString(const CStdString &res)
       const RESOLUTION_INFO &info = g_settings.m_ResInfo[i];
       if (info.iScreen != screen)
         continue;
-      float score = 10*(square_error((float)info.iWidth, (float)width) + square_error((float)info.iHeight, (float)height)) + square_error(info.fRefreshRate, refresh);
+      float score = 10*(square_error((float)info.iScreenWidth, (float)width) + square_error((float)info.iScreenHeight, (float)height)) + square_error(info.fRefreshRate, refresh);
       if (score < bestScore)
       {
         bestScore = score;
@@ -1508,7 +1522,7 @@ void CGUISettings::SetResolution(RESOLUTION res)
   else if (res >= RES_CUSTOM && res < (RESOLUTION)g_settings.m_ResInfo.size())
   {
     const RESOLUTION_INFO &info = g_settings.m_ResInfo[res];
-    mode.Format("%1i%05i%05i%09.5f", info.iScreen, info.iWidth, info.iHeight, info.fRefreshRate);
+    mode.Format("%1i%05i%05i%09.5f", info.iScreen, info.iScreenWidth, info.iScreenHeight, info.fRefreshRate);
   }
   else
   {

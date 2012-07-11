@@ -40,6 +40,7 @@ struct RESOLUTION_WHR
 {
   int width;
   int height;
+  int refresh;
   int ResInfo_Index;
 };
 
@@ -112,6 +113,7 @@ protected:
   bool              m_bFullScreen;
   int               m_nScreen;
   bool              m_bBlankOtherDisplay;
+  float             m_fRefreshRate;
 };
 
 

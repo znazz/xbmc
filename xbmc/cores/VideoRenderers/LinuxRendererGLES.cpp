@@ -47,6 +47,7 @@
 #include "threads/SingleLock.h"
 #include "RenderCapture.h"
 #include "RenderFormats.h"
+#include "Application.h"
 
 #if defined(__ARM_NEON__)
 #include "yuv2rgb.neon.h"
@@ -396,6 +397,11 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
   {
     ManageDisplay();
     ManageTextures();
+
+    // if running bypass, then player adjusts src/dst rects for video.
+    if (g_application.m_pPlayer)
+      g_application.m_pPlayer->SetVideoRect(m_sourceRect, m_destRect);
+
     g_graphicsContext.BeginPaint();
 
     // RENDER_BYPASS means we are rendering video
@@ -411,7 +417,6 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     glClear(GL_COLOR_BUFFER_BIT);
 
     g_graphicsContext.EndPaint();
-    glFinish();
     return;
   }
 
@@ -484,6 +489,9 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
 
 void CLinuxRendererGLES::FlipPage(int source)
 {
+  if (m_renderMethod & RENDER_BYPASS)
+    return;
+
   if( source >= 0 && source < m_NumYV12Buffers )
     m_iYV12RenderBuffer = source;
   else
@@ -1879,12 +1887,12 @@ void CLinuxRendererGLES::AddProcessor(COpenMax* openMax, DVDVideoPicture *pictur
 }
 #endif
 #ifdef HAVE_VIDEOTOOLBOXDECODER
-void CLinuxRendererGLES::AddProcessor(struct __CVBuffer *cvBufferRef)
+void CLinuxRendererGLES::AddProcessor(CDVDVideoCodecVideoToolBox* vtb, DVDVideoPicture *picture)
 {
   YUVBUFFER &buf = m_buffers[NextYV12Texture()];
   if (buf.cvBufferRef)
     CVBufferRelease(buf.cvBufferRef);
-  buf.cvBufferRef = cvBufferRef;
+  buf.cvBufferRef = picture->cvBufferRef;
   // retain another reference, this way dvdplayer and renderer can issue releases.
   CVBufferRetain(buf.cvBufferRef);
 }

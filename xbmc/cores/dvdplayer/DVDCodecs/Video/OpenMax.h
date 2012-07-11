@@ -22,14 +22,15 @@
 
 #if defined(HAVE_LIBOPENMAX)
 
-#include "cores/dvdplayer/DVDStreamInfo.h"
-#include "DVDVideoCodec.h"
-#include "threads/Event.h"
+#include "utils/StdString.h"
 
 #include <queue>
 #include <semaphore.h>
+#if (HAVE_LIBOPENMAX == 2)
+#include <IL/OMX_Core.h>
+#else
 #include <OMX_Core.h>
-
+#endif
 ////////////////////////////////////////////////////////////////////////////////////////////
 // debug spew defines
 #if 0
@@ -47,13 +48,6 @@ typedef struct omx_codec_capability {
     // or OMX_VIDEO_MPEG4PROFILETYPE depending on context.
     OMX_U32 profile;
 } omx_codec_capability;
-
-typedef struct omx_demux_packet {
-  OMX_U8 *buff;
-  int size;
-  double dts;
-  double pts;
-} omx_demux_packet;
 
 class DllLibOpenMax;
 class COpenMax
