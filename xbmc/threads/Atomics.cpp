@@ -1,36 +1,36 @@
 /*
-*      Copyright (C) 2005-2009 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, write to
-*  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
-*  http://www.gnu.org/copyleft/gpl.html
-*
-*/
+ *      Copyright (C) 2005-2009 Team XBMC
+ *      http://www.xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, write to
+ *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+ *  http://www.gnu.org/copyleft/gpl.html
+ *
+ */
 
 #include "Atomics.h"
 
 // the only safe way to be absolutly sure that
 // gcc intrinsics are present when using an unknown GCC
 #if defined(__GNUC__) && defined(__GNUC_MINOR__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4))
-#define HAS_GCC_INTRINSICS
+  #define HAS_GCC_INTRINSICS
 #elif defined(TARGET_DARWIN)
-// safe under darwin gcc-4.2, llvm-gcc-4.2 and clang
-#define HAS_GCC_INTRINSICS
+  // safe under darwin gcc-4.2, llvm-gcc-4.2 and clang
+  #define HAS_GCC_INTRINSICS
 #elif defined(TARGET_FREEBSD)
-// safe under freebsd gcc-4.2 and clang
-#define HAS_GCC_INTRINSICS
+  // safe under freebsd gcc-4.2 and clang
+  #define HAS_GCC_INTRINSICS
 #endif
 ///////////////////////////////////////////////////////////////////////////
 // 32-bit atomic compare-and-swap
@@ -39,28 +39,23 @@
 long cas(volatile long *pAddr, long expectedVal, long swapVal)
 {
 #if defined(HAS_GCC_INTRINSICS)
-return(__sync_val_compare_and_swap(pAddr, expectedVal, swapVal));
+  return(__sync_val_compare_and_swap(pAddr, expectedVal, swapVal));
 #elif defined(__ppc__) || defined(__powerpc__) // PowerPC
-unsigned int prev;
-__asm__ __volatile__ (
-"  1:      lwarx   %0,0,%2  \n" /* Load the current value of *pAddr(%2) into prev (%0) and lock pAddr,  */
-"          cmpw     0,%0,%3 \n" /* Verify that the current value (%2) == old value (%3) */
-"          bne-     2f      \n" /* Bail if the two values are not equal [not as expected] */
-"          stwcx.  %4,0,%2  \n" /* Attempt to store swapVal (%4) value into *pAddr (%2) [p must still be reserved] */
-"          bne-    1b       \n" /* Loop if p was no longer reserved */
-"          isync            \n" /* Reconcile multiple processors [if present] */
-"  2:                       \n"
-: "=&r" (prev), "+m" (*pAddr)                   /* Outputs [prev, *pAddr] */
-: "r" (pAddr), "r" (expectedVal), "r" (swapVal) /* Inputs [pAddr, expectedVal, swapVal] */
-: "cc", "memory");                              /* Clobbers */
-return prev;
+  unsigned int prev;
+  __asm__ __volatile__ (
+    "  1:      lwarx   %0,0,%2  \n" /* Load the current value of *pAddr(%2) into prev (%0) and lock pAddr,  */
+    "          cmpw     0,%0,%3 \n" /* Verify that the current value (%2) == old value (%3) */
+    "          bne-     2f      \n" /* Bail if the two values are not equal [not as expected] */
+    "          stwcx.  %4,0,%2  \n" /* Attempt to store swapVal (%4) value into *pAddr (%2) [p must still be reserved] */
+    "          bne-    1b       \n" /* Loop if p was no longer reserved */
+    "          isync            \n" /* Reconcile multiple processors [if present] */
+    "  2:                       \n"
+    : "=&r" (prev), "+m" (*pAddr)                   /* Outputs [prev, *pAddr] */
+    : "r" (pAddr), "r" (expectedVal), "r" (swapVal) /* Inputs [pAddr, expectedVal, swapVal] */
+    : "cc", "memory");                              /* Clobbers */
+  return prev;
 
 #elif defined(__arm__)
-<<<<<<< HEAD
-=======
-long cas(volatile long* pAddr, long expectedVal, long swapVal)
-{
-  /*
   register long prev;
   asm volatile (
     "dmb      ish            \n" // Memory barrier. Make sure all memory accesses appearing before this complete before any that appear after
@@ -78,10 +73,6 @@ long cas(volatile long* pAddr, long expectedVal, long swapVal)
     : "r1"
     );
   return prev;
-  */
-  return(__sync_val_compare_and_swap(pAddr, expectedVal, swapVal));
-}
->>>>>>> pi/master
 
 #elif defined(__mips__)
 // TODO:
@@ -189,7 +180,6 @@ long AtomicIncrement(volatile long* pAddr)
 #elif defined(__arm__)
   register long val;
   asm volatile (
-<<<<<<< HEAD
     "dmb      ish            \n" // Memory barrier. Make sure all memory accesses appearing before this complete before any that appear after
     "1:                     \n" 
     "ldrex   %0, [%1]       \n" // (val = *pAddr)
@@ -202,18 +192,6 @@ long AtomicIncrement(volatile long* pAddr)
     : "r"(pAddr)
     : "r1"
     );
-=======
-                "1:                     \n" 
-                "ldrex   %0, [%1]       \n" // (val = *pAddr)
-                "add     %0,  #1        \n" // (val += 1)
-                "strex   r1,  %0, [%1]	\n"
-                "cmp     r1,   #0       \n"
-                "bne     1b             \n"
-                : "=&r" (val)
-                : "r"(pAddr)
-                : "r1"
-                );
->>>>>>> pi/master
   return val;
 
 #elif defined(__mips__)
@@ -280,7 +258,6 @@ long AtomicAdd(volatile long* pAddr, long amount)
 #elif defined(__arm__)
   register long val;
   asm volatile (
-<<<<<<< HEAD
     "dmb      ish           \n" // Memory barrier. Make sure all memory accesses appearing before this complete before any that appear after
   "1:                       \n" 
     "ldrex   %0, [%1]       \n" // (val = *pAddr)
@@ -293,18 +270,6 @@ long AtomicAdd(volatile long* pAddr, long amount)
     : "r"(pAddr), "r"(amount)
     : "r1"
     );
-=======
-                "1:                     \n" 
-                "ldrex   %0, [%1]       \n" // (val = *pAddr)
-                "add     %0,  %2        \n" // (val += amount)
-                "strex   r1,  %0, [%1]	\n"
-                "cmp     r1,   #0       \n"
-                "bne     1b             \n"
-                : "=&r" (val)
-                : "r"(pAddr), "r"(amount)
-                : "r1"
-                );
->>>>>>> pi/master
   return val;
 
 #elif defined(__mips__)
@@ -371,7 +336,6 @@ long AtomicDecrement(volatile long* pAddr)
 #elif defined(__arm__)
   register long val;
   asm volatile (
-<<<<<<< HEAD
     "dmb      ish           \n" // Memory barrier. Make sure all memory accesses appearing before this complete before any that appear after
     "1:                     \n" 
     "ldrex   %0, [%1]       \n" // (val = *pAddr)
@@ -384,19 +348,6 @@ long AtomicDecrement(volatile long* pAddr)
     : "r"(pAddr)
     : "r1"
     );
-=======
-                "1:                     \n" 
-                "ldrex   %0, [%1]       \n" // (val = *pAddr)
-                "sub     %0,  #1        \n" // (val -= 1)
-                "strex   r1,  %0, [%1]	\n"
-                "cmp     r1,   #0       \n"
-                "bne     1b             \n"
-                : "=&r" (val)
-                : "r"(pAddr)
-                : "r1"
-                );
-  
->>>>>>> pi/master
   return val;
 
 #elif defined(__mips__)
@@ -464,7 +415,6 @@ long AtomicSubtract(volatile long* pAddr, long amount)
 #elif defined(__arm__)
   register long val;
   asm volatile (
-<<<<<<< HEAD
     "dmb     ish            \n" // Memory barrier. Make sure all memory accesses appearing before this complete before any that appear after
     "1:                     \n" 
     "ldrex   %0, [%1]       \n" // (val = *pAddr)
@@ -477,19 +427,6 @@ long AtomicSubtract(volatile long* pAddr, long amount)
     : "r"(pAddr), "r"(amount)
     : "r1"
     );
-=======
-                "1:                     \n" 
-                "ldrex   %0, [%1]       \n" // (val = *pAddr)
-                "sub     %0,  %2        \n" // (val -= amount)
-                "strex   r1,  %0, [%1]	\n"
-                "cmp     r1,   #0       \n"
-                "bne     1b             \n"
-                : "=&r" (val)
-                : "r"(pAddr), "r"(amount)
-                : "r1"
-                );
-  
->>>>>>> pi/master
   return val;
 
 #elif defined(__mips__)
