@@ -109,6 +109,7 @@ bool CThumbExtractor::DoWork()
   ||  m_item.IsDVDImage()
   ||  m_item.IsDVDFile(false, true)
   ||  m_item.IsInternetStream()
+  ||  m_item.IsDiscStub()
   ||  m_item.IsPlayList())
     return false;
 
@@ -198,8 +199,7 @@ bool CVideoThumbLoader::LoadItem(CFileItem* pItem)
   m_database->Open();
 
   // resume point
-  if (pItem->HasVideoInfoTag() &&
-      pItem->GetVideoInfoTag()->m_resumePoint.type != CBookmark::RESUME && pItem->GetVideoInfoTag()->m_resumePoint.totalTimeInSeconds == 0)
+  if (pItem->HasVideoInfoTag() && !pItem->GetVideoInfoTag()->m_resumePoint.IsSet())
   {
     if (m_database->GetResumePoint(*pItem->GetVideoInfoTag()))
       pItem->SetInvalid();

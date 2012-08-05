@@ -35,10 +35,12 @@
 #include "dialogs/GUIDialogProgress.h"
 #include "settings/GUISettings.h"
 #include "FileItem.h"
+#include "video/VideoInfoTag.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
-#include "Application.h"
+#include "ApplicationMessenger.h"
+#include "URL.h"
 
 using namespace XFILE;
 using namespace std;
@@ -147,6 +149,8 @@ bool CPluginDirectory::GetPluginResult(const CStdString& strPath, CFileItem &res
     resultItem.SetPath(newDir->m_fileResult->GetPath());
     resultItem.SetMimeType(newDir->m_fileResult->GetMimeType(false));
     resultItem.UpdateInfo(*newDir->m_fileResult);
+    if (newDir->m_fileResult->HasVideoInfoTag() && newDir->m_fileResult->GetVideoInfoTag()->m_resumePoint.IsSet())
+      resultItem.m_lStartOffset = STARTOFFSET_RESUME; // resume point set in the resume item, so force resume
   }
   delete newDir;
 
@@ -539,7 +543,7 @@ bool CPluginDirectory::WaitOnScriptResult(const CStdString &scriptPath, const CS
     }
   }
   if (progressBar)
-    g_application.getApplicationMessenger().Close(progressBar, false, false);
+    CApplicationMessenger::Get().Close(progressBar, false, false);
 
   return !m_cancelled && m_success;
 }

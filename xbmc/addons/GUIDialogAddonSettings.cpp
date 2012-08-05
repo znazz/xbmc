@@ -39,8 +39,8 @@
 #include "video/VideoInfoScanner.h"
 #include "addons/Scraper.h"
 #include "guilib/GUIWindowManager.h"
-#include "Application.h"
-#include "dialogs/GUIDialogKeyboard.h"
+#include "ApplicationMessenger.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "FileItem.h"
 #include "settings/Settings.h"
 #include "GUIInfoManager.h"
@@ -48,6 +48,8 @@
 #include "dialogs/GUIDialogSelect.h"
 #include "GUIWindowAddonBrowser.h"
 #include "utils/log.h"
+#include "Util.h"
+#include "URL.h"
 
 using namespace std;
 using namespace ADDON;
@@ -98,7 +100,7 @@ bool CGUIDialogAddonSettings::OnMessage(CGUIMessage& message)
       bool bCloseDialog = false;
 
       if (iControl == ID_BUTTON_DEFAULT)
-        SetDefaults();
+        SetDefaultSettings();
       else if (iControl != ID_BUTTON_OK)
         bCloseDialog = ShowVirtualKeyboard(iControl);
 
@@ -249,7 +251,7 @@ bool CGUIDialogAddonSettings::ShowVirtualKeyboard(int iControl)
           if (bEncoded)
             CURL::Decode(value);
 
-          if (CGUIDialogKeyboard::ShowAndGetInput(value, label, true, bHidden))
+          if (CGUIKeyboardFactory::ShowAndGetInput(value, label, true, bHidden))
           {
             // if hidden hide input
             if (bHidden)
@@ -408,7 +410,7 @@ bool CGUIDialogAddonSettings::ShowVirtualKeyboard(int iControl)
             action.Replace("$ID", m_addon->ID());
             if (option)
               bCloseDialog = (strcmpi(option, "close") == 0);
-            g_application.getApplicationMessenger().ExecBuiltIn(action);
+            CApplicationMessenger::Get().ExecBuiltIn(action);
           }
         }
         else if (strcmp(type, "date") == 0)
@@ -1079,7 +1081,7 @@ CStdString CGUIDialogAddonSettings::GetString(const char *value, bool subSetting
 }
 
 // Go over all the settings and set their default values
-void CGUIDialogAddonSettings::SetDefaults()
+void CGUIDialogAddonSettings::SetDefaultSettings()
 {
   if(!m_addon)
     return;

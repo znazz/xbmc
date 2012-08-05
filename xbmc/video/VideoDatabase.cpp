@@ -54,6 +54,7 @@
 #include "XBDateTime.h"
 #include "pvr/PVRManager.h"
 #include "pvr/recordings/PVRRecordings.h"
+#include "URL.h"
 
 using namespace std;
 using namespace dbiplus;
@@ -4132,9 +4133,12 @@ bool CVideoDatabase::GetPlayCounts(const CStdString &strPath, CFileItemList &ite
       if (item)
       {
         item->GetVideoInfoTag()->m_playCount = m_pDS->fv(1).get_asInt();
-        item->GetVideoInfoTag()->m_resumePoint.timeInSeconds = m_pDS->fv(2).get_asInt();
-        item->GetVideoInfoTag()->m_resumePoint.totalTimeInSeconds = m_pDS->fv(3).get_asInt();
-        item->GetVideoInfoTag()->m_resumePoint.type = CBookmark::RESUME;
+        if (!item->GetVideoInfoTag()->m_resumePoint.IsSet())
+        {
+          item->GetVideoInfoTag()->m_resumePoint.timeInSeconds = m_pDS->fv(2).get_asInt();
+          item->GetVideoInfoTag()->m_resumePoint.totalTimeInSeconds = m_pDS->fv(3).get_asInt();
+          item->GetVideoInfoTag()->m_resumePoint.type = CBookmark::RESUME;
+        }
       }
       m_pDS->next();
     }

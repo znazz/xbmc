@@ -29,7 +29,6 @@
 #include "settings/GUISettings.h"
 #include "FileItem.h"
 #include "filesystem/File.h"
-#include "filesystem/CurlFile.h"
 #include "DllImageLib.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
@@ -45,7 +44,7 @@ using namespace XFILE;
 bool CPicture::CreateThumbnailFromSurface(const unsigned char *buffer, int width, int height, int stride, const CStdString &thumbFile)
 {
   CLog::Log(LOGDEBUG, "cached image '%s' size %dx%d", thumbFile.c_str(), width, height);
-  if (URIUtils::GetExtension(thumbFile).Equals(".jpg"))
+  if (URIUtils::GetExtension(thumbFile).Equals(".jpg") || URIUtils::GetExtension(thumbFile).Equals(".tbn"))
   {
 #if defined(HAVE_OMXLIB)
     COMXImage omxImage;

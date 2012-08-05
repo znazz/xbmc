@@ -31,6 +31,10 @@
 #include "bus/PeripheralBusUSB.h"
 #include "dialogs/GUIDialogPeripheralManager.h"
 
+#ifdef HAVE_CEC_RPI_API
+#include "bus/linux/PeripheralBusRPi.h"
+#endif
+
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/XMLUtils.h"
@@ -40,6 +44,7 @@
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "dialogs/GUIDialogKaiToast.h"
+#include "GUIUserMessages.h"
 #include "utils/StringUtils.h"
 #include "Util.h"
 #include "guilib/Key.h"
@@ -78,6 +83,9 @@ void CPeripherals::Initialise(void)
 
 #if defined(HAVE_PERIPHERAL_BUS_USB)
     m_busses.push_back(new CPeripheralBusUSB(this));
+#endif
+#ifdef HAVE_CEC_RPI_API
+    m_busses.push_back(new CPeripheralBusRPi(this));
 #endif
 
     /* initialise all known busses */
@@ -311,6 +319,10 @@ void CPeripherals::OnDeviceAdded(const CPeripheralBus &bus, const CPeripheral &p
   if (dialog && dialog->IsActive())
     dialog->Update();
 
+  // refresh settings (peripherals manager could be enabled now)
+  CGUIMessage msg(GUI_MSG_UPDATE, WINDOW_SETTINGS_SYSTEM, 0);
+  g_windowManager.SendThreadMessage(msg, WINDOW_SETTINGS_SYSTEM);
+
   CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, g_localizeStrings.Get(35005), peripheral.DeviceName());
 }
 
@@ -319,6 +331,10 @@ void CPeripherals::OnDeviceDeleted(const CPeripheralBus &bus, const CPeripheral 
   CGUIDialogPeripheralManager *dialog = (CGUIDialogPeripheralManager *)g_windowManager.GetWindow(WINDOW_DIALOG_PERIPHERAL_MANAGER);
   if (dialog && dialog->IsActive())
     dialog->Update();
+
+  // refresh settings (peripherals manager could be disabled now)
+  CGUIMessage msg(GUI_MSG_UPDATE, WINDOW_SETTINGS_SYSTEM, 0);
+  g_windowManager.SendThreadMessage(msg, WINDOW_SETTINGS_SYSTEM);
 
   CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, g_localizeStrings.Get(35006), peripheral.DeviceName());
 }

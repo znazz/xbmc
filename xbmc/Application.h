@@ -25,6 +25,7 @@
 #include "XBApplicationEx.h"
 
 #include "guilib/IMsgTargetCallback.h"
+#include "guilib/Key.h"
 #include "threads/Condition.h"
 
 #include <map>
@@ -53,7 +54,6 @@ namespace MEDIA_DETECT
 #include "win32/WIN32Util.h"
 #endif
 #include "utils/Stopwatch.h"
-#include "ApplicationMessenger.h"
 #include "network/Network.h"
 #include "utils/CharsetConverter.h"
 #ifdef HAS_PERFORMANCE_SAMPLE
@@ -65,7 +65,6 @@ namespace MEDIA_DETECT
 class CSeekHandler;
 class CKaraokeLyricsManager;
 class CInertialScrollingHandler;
-class CApplicationMessenger;
 class DPMSSupport;
 class CSplash;
 class CBookmark;
@@ -109,6 +108,18 @@ protected:
 class CApplication : public CXBApplicationEx, public IPlayerCallback, public IMsgTargetCallback
 {
 public:
+
+  enum ESERVERS
+  {
+    ES_WEBSERVER = 1,
+    ES_AIRPLAYSERVER,
+    ES_JSONRPCSERVER,
+    ES_UPNPRENDERER,
+    ES_UPNPSERVER,
+    ES_EVENTSERVER,
+    ES_ZEROCONF
+  };
+
   CApplication(void);
   virtual ~CApplication(void);
   virtual bool Initialize();
@@ -124,10 +135,13 @@ public:
   bool DestroyWindow();
   void StartServices();
   void StopServices();
+
+  bool StartServer(enum ESERVERS eServer, bool bStart, bool bWait = false);
+
   bool StartWebServer();
   void StopWebServer();
-  void StartAirplayServer();  
-  void StopAirplayServer(bool bWait);   
+  bool StartAirplayServer();
+  void StopAirplayServer(bool bWait);
   bool StartJSONRPCServer();
   void StopJSONRPCServer(bool bWait);
   void StartUPnP();
@@ -248,7 +262,6 @@ public:
 
   static bool OnEvent(XBMC_Event& newEvent);
 
-  CApplicationMessenger& getApplicationMessenger();
 #if defined(HAS_LINUX_NETWORK)
   CNetworkLinux& getNetwork();
 #elif defined(HAS_WIN32_NETWORK)
@@ -350,13 +363,16 @@ public:
    \sa CSeekHandler
    */
   const CSeekHandler *GetSeekHandler() const { return m_seekHandler; };
+
+  bool SwitchToFullScreen();
+
+  CSplash* GetSplash() { return m_splash; }
 protected:
   bool LoadSkin(const CStdString& skinID);
   void LoadSkin(const boost::shared_ptr<ADDON::CSkinInfo>& skin);
 
   bool m_skinReloading; // if true we disallow LoadSkin until ReloadSkin is called
 
-  friend class CApplicationMessenger;
 #if defined(TARGET_DARWIN_IOS)
   friend class CWinEventsIOS;
 #endif
@@ -412,7 +428,7 @@ protected:
   bool m_bEnableLegacyRes;
   bool m_bTestMode;
   bool m_bSystemScreenSaverEnable;
-  
+
   int        m_frameCount;
   CCriticalSection m_frameMutex;
   XbmcThreads::ConditionVariable  m_frameCond;
@@ -430,7 +446,6 @@ protected:
   void VolumeChanged() const;
 
   bool PlayStack(const CFileItem& item, bool bRestart);
-  bool SwitchToFullScreen();
   bool ProcessMouse();
   bool ProcessRemote(float frameTime);
   bool ProcessGamepad(float frameTime);
@@ -453,7 +468,6 @@ protected:
 
   CSeekHandler *m_seekHandler;
   CInertialScrollingHandler *m_pInertialScrollingHandler;
-  CApplicationMessenger m_applicationMessenger;
 #if defined(HAS_LINUX_NETWORK)
   CNetworkLinux m_network;
 #elif defined(HAS_WIN32_NETWORK)

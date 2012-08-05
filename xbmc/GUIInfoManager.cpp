@@ -20,9 +20,8 @@
  */
 
 #include "system.h"
+#include "GUIInfoManager.h"
 #include "windows/GUIMediaWindow.h"
-#include "dialogs/GUIDialogFileBrowser.h"
-#include "settings/GUIDialogContentSettings.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "Application.h"
 #include "Util.h"
@@ -36,17 +35,14 @@
 #ifdef HAS_LCD
 #include "utils/LCD.h"
 #endif
-#include "GUIPassword.h"
 #include "LangInfo.h"
 #include "utils/SystemInfo.h"
 #include "guilib/GUITextBox.h"
-#include "GUIInfoManager.h"
 #include "pictures/GUIWindowSlideShow.h"
 #include "music/LastFmManager.h"
 #include "pictures/PictureInfoTag.h"
 #include "music/tags/MusicInfoTag.h"
 #include "guilib/GUIWindowManager.h"
-#include "filesystem/File.h"
 #include "playlists/PlayList.h"
 #include "utils/TuxBoxUtil.h"
 #include "windowing/WindowingFactory.h"
@@ -58,11 +54,10 @@
 #include "utils/StringUtils.h"
 #include "utils/MathUtils.h"
 #include "utils/SeekHandler.h"
+#include "URL.h"
 
 // stuff for current song
-#include "music/tags/MusicInfoTagLoaderFactory.h"
 #include "music/MusicInfoLoader.h"
-#include "utils/LabelFormatter.h"
 
 #include "GUIUserMessages.h"
 #include "video/dialogs/GUIDialogVideoInfo.h"
@@ -80,7 +75,6 @@
 
 #include "addons/AddonManager.h"
 #include "interfaces/info/InfoBool.h"
-#include "TextureCache.h"
 #include "ThumbLoader.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 
@@ -3415,7 +3409,7 @@ CStdString CGUIInfoManager::GetMusicLabel(int item)
       CStdString strSampleRate = "";
       if (g_application.m_pPlayer->GetSampleRate() > 0)
       {
-        strSampleRate.Format("%i",g_application.m_pPlayer->GetSampleRate());
+        strSampleRate.Format("%.5g", ((double)g_application.m_pPlayer->GetSampleRate() / 1000.0));
       }
       return strSampleRate;
     }
@@ -3906,7 +3900,7 @@ string CGUIInfoManager::GetSystemHeatInfo(int info)
   { // update our variables
     m_lastSysHeatInfoTime = CTimeUtils::GetFrameTime();
 #if defined(_LINUX)
-    m_cpuTemp = g_cpuInfo.getTemperature();
+    g_cpuInfo.getTemperature(m_cpuTemp);
     m_gpuTemp = GetGPUTemperature();
 #endif
   }
@@ -4128,7 +4122,7 @@ bool CGUIInfoManager::GetItemInt(int &value, const CGUIListItem *item, int info)
     }
     break;
   case LISTITEM_PERCENT_PLAYED:
-    if (item->IsFileItem() && ((const CFileItem *)item)->HasVideoInfoTag() && ((const CFileItem *)item)->GetVideoInfoTag()->m_resumePoint.totalTimeInSeconds > 0 && ((const CFileItem *)item)->GetVideoInfoTag()->m_resumePoint.timeInSeconds > 0)
+    if (item->IsFileItem() && ((const CFileItem *)item)->HasVideoInfoTag() && ((const CFileItem *)item)->GetVideoInfoTag()->m_resumePoint.IsPartWay())
       value = (int)(100 * ((const CFileItem *)item)->GetVideoInfoTag()->m_resumePoint.timeInSeconds / ((const CFileItem *)item)->GetVideoInfoTag()->m_resumePoint.totalTimeInSeconds);
     else
       value = 0;

@@ -35,7 +35,7 @@
 #include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogSelect.h"
-#include "dialogs/GUIDialogKeyboard.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "filesystem/File.h"
 #include "filesystem/Directory.h"
 #include "settings/AdvancedSettings.h"
@@ -739,6 +739,10 @@ void CMusicInfoScanner::FindArtForAlbums(VECALBUMS &albums, const CStdString &pa
   for (VECALBUMS::iterator i = albums.begin(); i != albums.end(); ++i)
   {
     CAlbum &album = *i;
+
+    if (albums.size() != 1)
+      albumArt = "";
+
     /*
      Find art that is common across these items
      If we find a single art image we treat it as the album art
@@ -772,7 +776,7 @@ void CMusicInfoScanner::FindArtForAlbums(VECALBUMS &albums, const CStdString &pa
       }
       for (VECSONGS::iterator k = album.songs.begin(); k != album.songs.end(); ++k)
         k->strThumb.clear();
-      albums[0].art["thumb"] = albumArt;
+      album.art["thumb"] = albumArt;
     }
     else
     { // more than one piece of art was found for these songs, so cache per song
@@ -930,16 +934,18 @@ bool CMusicInfoScanner::DownloadAlbumInfo(const CStdString& strPath, const CStdS
   }
 
   if (!scraper.GetAlbumCount())
+  {
     scraper.FindAlbumInfo(strAlbum, strArtist);
 
-  while (!scraper.Completed())
-  {
-    if (m_bStop)
+    while (!scraper.Completed())
     {
-      scraper.Cancel();
-      bCanceled = true;
+      if (m_bStop)
+      {
+        scraper.Cancel();
+        bCanceled = true;
+      }
+      Sleep(1);
     }
-    Sleep(1);
   }
 
   CGUIDialogSelect *pDlg=NULL;
@@ -1021,11 +1027,11 @@ bool CMusicInfoScanner::DownloadAlbumInfo(const CStdString& strPath, const CStdS
           }
           // manual button pressed
           CStdString strNewAlbum = strAlbum;
-          if (!CGUIDialogKeyboard::ShowAndGetInput(strNewAlbum, g_localizeStrings.Get(16011), false)) return false;
+          if (!CGUIKeyboardFactory::ShowAndGetInput(strNewAlbum, g_localizeStrings.Get(16011), false)) return false;
           if (strNewAlbum == "") return false;
 
           CStdString strNewArtist = strArtist;
-          if (!CGUIDialogKeyboard::ShowAndGetInput(strNewArtist, g_localizeStrings.Get(16025), false)) return false;
+          if (!CGUIKeyboardFactory::ShowAndGetInput(strNewArtist, g_localizeStrings.Get(16025), false)) return false;
 
           pDialog->SetLine(0, strNewAlbum);
           pDialog->SetLine(1, strNewArtist);
@@ -1156,16 +1162,18 @@ bool CMusicInfoScanner::DownloadArtistInfo(const CStdString& strPath, const CStd
   }
 
   if (!scraper.GetArtistCount())
+  {
     scraper.FindArtistInfo(strArtist);
 
-  while (!scraper.Completed())
-  {
-    if (m_bStop)
+    while (!scraper.Completed())
     {
-      scraper.Cancel();
-      bCanceled = true;
+      if (m_bStop)
+      {
+        scraper.Cancel();
+        bCanceled = true;
+      }
+      Sleep(1);
     }
-    Sleep(1);
   }
 
   int iSelectedArtist = 0;
@@ -1213,7 +1221,7 @@ bool CMusicInfoScanner::DownloadArtistInfo(const CStdString& strPath, const CStd
             }
             // manual button pressed
             CStdString strNewArtist = strArtist;
-            if (!CGUIDialogKeyboard::ShowAndGetInput(strNewArtist, g_localizeStrings.Get(16025), false)) return false;
+            if (!CGUIKeyboardFactory::ShowAndGetInput(strNewArtist, g_localizeStrings.Get(16025), false)) return false;
 
             if (pDialog)
             {

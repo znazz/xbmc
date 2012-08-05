@@ -31,6 +31,7 @@
 #include "utils/log.h"
 
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "settings/Settings.h"
 #include "settings/GUISettings.h"
 #include "settings/AdvancedSettings.h"
@@ -227,7 +228,7 @@ CStdString CXBMCRenderManager::GetVSyncState()
   return state;
 }
 
-bool CXBMCRenderManager::Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, unsigned extended_format)
+bool CXBMCRenderManager::Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, unsigned extended_format, unsigned int orientation)
 {
   /* make sure any queued frame was fully presented */
   double timeout = m_presenttime + 0.1;
@@ -247,13 +248,13 @@ bool CXBMCRenderManager::Configure(unsigned int width, unsigned int height, unsi
     return false;
   }
 
-  bool result = m_pRenderer->Configure(width, height, d_width, d_height, fps, flags, format, extended_format);
+  bool result = m_pRenderer->Configure(width, height, d_width, d_height, fps, flags, format, extended_format, orientation);
   if(result)
   {
     if( flags & CONF_FLAGS_FULLSCREEN )
     {
       lock.Leave();
-      g_application.getApplicationMessenger().SwitchToFullscreen();
+      CApplicationMessenger::Get().SwitchToFullscreen();
       lock.Enter();
     }
     m_pRenderer->Update(false);
@@ -372,7 +373,7 @@ bool CXBMCRenderManager::Flush()
   {
     ThreadMessage msg = {TMSG_RENDERER_FLUSH};
     m_flushEvent.Reset();
-    g_application.getApplicationMessenger().SendMessage(msg, false);
+    CApplicationMessenger::Get().SendMessage(msg, false);
     if (!m_flushEvent.WaitMSec(1000))
     {
       CLog::Log(LOGERROR, "%s - timed out waiting for renderer to flush", __FUNCTION__);

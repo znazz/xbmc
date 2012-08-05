@@ -22,13 +22,14 @@
 #include "system.h"
 #include "utils/AlarmClock.h"
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "Autorun.h"
 #include "Builtins.h"
 #include "input/ButtonTranslator.h"
 #include "FileItem.h"
 #include "addons/GUIDialogAddonSettings.h"
 #include "dialogs/GUIDialogFileBrowser.h"
-#include "dialogs/GUIDialogKeyboard.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "music/dialogs/GUIDialogMusicScan.h"
 #include "dialogs/GUIDialogNumeric.h"
@@ -53,6 +54,7 @@
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "Util.h"
+#include "URL.h"
 
 #include "filesystem/PluginDirectory.h"
 #ifdef HAS_FILESYSTEM_RAR
@@ -86,6 +88,7 @@
 #endif
 
 #include <vector>
+#include "xbmc/settings/AdvancedSettings.h"
 
 using namespace std;
 using namespace XFILE;
@@ -122,6 +125,7 @@ const BUILT_IN commands[] = {
   { "ReplaceWindow",              true,   "Replaces the current window with the new one" },
   { "TakeScreenshot",             false,  "Takes a Screenshot" },
   { "RunScript",                  true,   "Run the specified script" },
+  { "StopScript",                 true,   "Stop the script by ID or path, if running" },
 #if defined(TARGET_DARWIN)
   { "RunAppleScript",             true,   "Run the specified AppleScript command" },
 #endif
@@ -209,6 +213,7 @@ const BUILT_IN commands[] = {
   { "LCD.Resume",                 false,  "Resumes LCDproc" },
 #endif
   { "VideoLibrary.Search",        false,  "Brings up a search dialog which will search the library" },
+  { "toggledebug",                false,  "Enables/disables debug mode" },
 };
 
 bool CBuiltins::HasCommand(const CStdString& execString)
@@ -248,31 +253,31 @@ int CBuiltins::Execute(const CStdString& execString)
 
   if (execute.Equals("reboot") || execute.Equals("restart"))  //Will reboot the xbox, aka cold reboot
   {
-    g_application.getApplicationMessenger().Restart();
+    CApplicationMessenger::Get().Restart();
   }
   else if (execute.Equals("shutdown"))
   {
-    g_application.getApplicationMessenger().Shutdown();
+    CApplicationMessenger::Get().Shutdown();
   }
   else if (execute.Equals("powerdown"))
   {
-    g_application.getApplicationMessenger().Powerdown();
+    CApplicationMessenger::Get().Powerdown();
   }
   else if (execute.Equals("restartapp"))
   {
-    g_application.getApplicationMessenger().RestartApp();
+    CApplicationMessenger::Get().RestartApp();
   }
   else if (execute.Equals("hibernate"))
   {
-    g_application.getApplicationMessenger().Hibernate();
+    CApplicationMessenger::Get().Hibernate();
   }
   else if (execute.Equals("suspend"))
   {
-    g_application.getApplicationMessenger().Suspend();
+    CApplicationMessenger::Get().Suspend();
   }
   else if (execute.Equals("quit"))
   {
-    g_application.getApplicationMessenger().Quit();
+    CApplicationMessenger::Get().Quit();
   }
   else if (execute.Equals("inhibitidleshutdown"))
   {
@@ -281,7 +286,7 @@ int CBuiltins::Execute(const CStdString& execString)
   }
   else if (execute.Equals("minimize"))
   {
-    g_application.getApplicationMessenger().Minimize();
+    CApplicationMessenger::Get().Minimize();
   }
   else if (execute.Equals("loadprofile"))
   {
@@ -321,7 +326,7 @@ int CBuiltins::Execute(const CStdString& execString)
   }
   else if (execute.Equals("reset")) //Will reset the xbox, aka soft reset
   {
-    g_application.getApplicationMessenger().Reset();
+    CApplicationMessenger::Get().Reset();
   }
   else if (execute.Equals("activatewindow") || execute.Equals("replacewindow"))
   {
@@ -427,15 +432,28 @@ int CBuiltins::Execute(const CStdString& execString)
     Cocoa_DoAppleScript(strParameterCaseIntact.c_str());
   }
 #endif
+  else if (execute.Equals("stopscript"))
+  {
+#ifdef HAS_PYTHON
+    CStdString scriptpath(params[0]);
+
+    // Test to see if the param is an addon ID
+    AddonPtr script;
+    if (CAddonMgr::Get().GetAddon(params[0], script))
+      scriptpath = script->LibPath();
+
+    g_pythonParser.StopScript(scriptpath);
+#endif
+  }
   else if (execute.Equals("system.exec"))
   {
-    g_application.getApplicationMessenger().Minimize();
-    g_application.getApplicationMessenger().ExecOS(parameter, false);
+    CApplicationMessenger::Get().Minimize();
+    CApplicationMessenger::Get().ExecOS(parameter, false);
   }
   else if (execute.Equals("system.execwait"))
   {
-    g_application.getApplicationMessenger().Minimize();
-    g_application.getApplicationMessenger().ExecOS(parameter, true);
+    CApplicationMessenger::Get().Minimize();
+    CApplicationMessenger::Get().ExecOS(parameter, true);
   }
   else if (execute.Equals("resolution"))
   {
@@ -757,7 +775,7 @@ int CBuiltins::Execute(const CStdString& execString)
       {
 #ifdef HAS_WEB_SERVER_BROADCAST
         if (m_pXbmcHttp && g_settings.m_HttpApiBroadcastLevel>=1)
-          g_application.getApplicationMessenger().HttpApi(g_application.m_pPlayer->IsRecording()?"broadcastlevel; RecordStopping;1":"broadcastlevel; RecordStarting;1");
+          CApplicationMessenger::Get().HttpApi(g_application.m_pPlayer->IsRecording()?"broadcastlevel; RecordStopping;1":"broadcastlevel; RecordStarting;1");
 #endif
         g_application.m_pPlayer->Record(!g_application.m_pPlayer->IsRecording());
       }
@@ -878,7 +896,7 @@ int CBuiltins::Execute(const CStdString& execString)
     {
       if(params.size() > 1 && params[1].Equals("showVolumeBar"))    
       {
-        g_application.getApplicationMessenger().ShowVolumeBar(oldVolume < volume);  
+        CApplicationMessenger::Get().ShowVolumeBar(oldVolume < volume);  
       }
     }
   }
@@ -1100,7 +1118,7 @@ int CBuiltins::Execute(const CStdString& execString)
     g_mediaManager.GetLocalDrives(localShares);
     if (execute.Equals("skin.setstring"))
     {
-      if (CGUIDialogKeyboard::ShowAndGetInput(value, g_localizeStrings.Get(1029), true))
+      if (CGUIKeyboardFactory::ShowAndGetInput(value, g_localizeStrings.Get(1029), true))
         g_settings.SetSkinString(string, value);
     }
     else if (execute.Equals("skin.setnumeric"))
@@ -1475,7 +1493,7 @@ int CBuiltins::Execute(const CStdString& execString)
     if (CButtonTranslator::TranslateActionString(params[0].c_str(), actionID))
     {
       int windowID = params.size() == 2 ? CButtonTranslator::TranslateWindow(params[1]) : WINDOW_INVALID;
-      g_application.getApplicationMessenger().SendAction(CAction(actionID), windowID);
+      CApplicationMessenger::Get().SendAction(CAction(actionID), windowID);
     }
   }
   else if (execute.Equals("setproperty") && params.size() >= 2)
@@ -1598,8 +1616,13 @@ int CBuiltins::Execute(const CStdString& execString)
     CGUIMessage msg(GUI_MSG_SEARCH, 0, 0, 0);
     g_windowManager.SendMessage(msg, WINDOW_VIDEO_NAV);
   }
+  else if (execute.Equals("toggledebug"))
+  {
+    bool debug = g_guiSettings.GetBool("debug.showloginfo");
+    g_guiSettings.SetBool("debug.showloginfo", !debug);
+    g_advancedSettings.SetDebugMode(!debug);
+  }
   else
     return -1;
   return 0;
 }
-

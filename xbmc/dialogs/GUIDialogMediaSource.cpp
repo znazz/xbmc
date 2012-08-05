@@ -20,7 +20,7 @@
  */
 
 #include "GUIDialogMediaSource.h"
-#include "GUIDialogKeyboard.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "GUIDialogFileBrowser.h"
 #include "video/windows/GUIWindowVideoBase.h"
 #include "video/dialogs/GUIDialogVideoScan.h"
@@ -36,6 +36,7 @@
 #include "settings/GUISettings.h"
 #include "guilib/LocalizeStrings.h"
 #include "PasswordManager.h"
+#include "URL.h"
 
 using namespace std;
 using namespace XFILE;
@@ -313,7 +314,7 @@ void CGUIDialogMediaSource::OnPath(int item)
     m_bNameChanged=true;
 
   CStdString path(m_paths->Get(item)->GetPath());
-  CGUIDialogKeyboard::ShowAndGetInput(path, g_localizeStrings.Get(1021), false);
+  CGUIKeyboardFactory::ShowAndGetInput(path, g_localizeStrings.Get(1021), false);
   URIUtils::AddSlashAtEnd(path);
   m_paths->Get(item)->SetPath(path);
 

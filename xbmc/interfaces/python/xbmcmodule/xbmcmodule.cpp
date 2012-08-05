@@ -39,6 +39,7 @@
 #include "guilib/GUIWindowManager.h"
 #include "guilib/GUIAudioManager.h"
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "utils/Crc32.h"
 #include "utils/URIUtils.h"
 #include "Util.h"
@@ -58,6 +59,7 @@
 #include "filesystem/Directory.h"
 #include "pyrendercapture.h"
 #include "monitor.h"
+#include "URL.h"
 
 // include for constants
 #include "pyutil.h"
@@ -133,13 +135,13 @@ namespace PYXBMC
   PyDoc_STRVAR(output__doc__,
     "'xbmc.output()' is depreciated and will be removed in future releases,\n"
     "please use 'xbmc.log()' instead");
-  
+
   PyObject* XBMC_Output(PyObject *self, PyObject *args, PyObject *kwds)
   {
     CLog::Log(LOGWARNING,"'xbmc.output()' is depreciated and will be removed in future releases, please use 'xbmc.log()' instead");
     return XBMC_Log(self, args, kwds);
   }
-  
+
   // shutdown() method
   PyDoc_STRVAR(shutdown__doc__,
     "shutdown() -- Shutdown the xbox.\n"
@@ -150,7 +152,7 @@ namespace PYXBMC
   PyObject* XBMC_Shutdown(PyObject *self, PyObject *args)
   {
     ThreadMessage tMsg = {TMSG_SHUTDOWN};
-    g_application.getApplicationMessenger().SendMessage(tMsg);
+    CApplicationMessenger::Get().SendMessage(tMsg);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -166,7 +168,7 @@ namespace PYXBMC
   PyObject* XBMC_Restart(PyObject *self, PyObject *args)
   {
     ThreadMessage tMsg = {TMSG_RESTART};
-    g_application.getApplicationMessenger().SendMessage(tMsg);
+    CApplicationMessenger::Get().SendMessage(tMsg);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -188,7 +190,7 @@ namespace PYXBMC
 
     ThreadMessage tMsg = {TMSG_EXECUTE_SCRIPT};
     tMsg.strParam = cLine;
-    g_application.getApplicationMessenger().SendMessage(tMsg);
+    CApplicationMessenger::Get().SendMessage(tMsg);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -214,7 +216,7 @@ namespace PYXBMC
     bool bWait = false;
     if (!PyArg_ParseTuple(args, (char*)"s|b", &cLine, &bWait)) return NULL;
 
-    g_application.getApplicationMessenger().ExecBuiltIn(cLine, bWait);
+    CApplicationMessenger::Get().ExecBuiltIn(cLine, bWait);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -939,7 +941,54 @@ namespace PYXBMC
 
     return Py_BuildValue((char*)"b", exists);
   }
-  
+
+  // startServer() method
+  PyDoc_STRVAR(startServer__doc__,
+               "startServer(typ, bStart, bWait) -- start or stop a server.\n"
+               "\n"
+               "typ          : integer - use SERVER_* constants\n"
+               "\n"
+               "bStart       : bool - start (True) or stop (False) a server\n"
+               "\n"
+               "bWait        : [opt] bool - wait on stop before returning (not supported by all servers)\n"
+               "\n"
+               "returnValue  : bool - True or False\n"
+               "example:\n"
+               "  - xbmc.startServer(xbmc.SERVER_AIRPLAYSERVER, False)\n");
+
+  PyObject* XBMC_StartServer(PyObject *self, PyObject *args, PyObject *kwds)
+  {
+    static const char *keywords[] = {
+      "typ",
+      "bStart",
+      "bWait",
+      NULL};
+
+    int iTyp = 0;
+    char bStart = false;
+    char bWait = false;
+    bool ret = false;
+
+    if (!PyArg_ParseTupleAndKeywords(
+                                     args,
+                                     kwds,
+                                     (char*)"ib|b",
+                                     (char**)keywords,
+                                     &iTyp,
+                                     &bStart,
+                                     &bWait))
+    {
+      return NULL;
+    }
+
+    {
+      CPyThreadState save;
+      ret = g_application.StartServer((CApplication::ESERVERS)iTyp, bStart != 0, bWait != 0);
+    }
+
+    return Py_BuildValue((char*)"b", ret);
+  }
+
   // define c functions to be used in python here
   PyMethodDef xbmcMethods[] = {
     {(char*)"output", (PyCFunction)XBMC_Output, METH_VARARGS|METH_KEYWORDS, output__doc__},
@@ -985,6 +1034,8 @@ namespace PYXBMC
     {(char*)"getCleanMovieTitle", (PyCFunction)XBMC_GetCleanMovieTitle, METH_VARARGS|METH_KEYWORDS, getCleanMovieTitle__doc__},
 
     {(char*)"skinHasImage", (PyCFunction)XBMC_SkinHasImage, METH_VARARGS|METH_KEYWORDS, skinHasImage__doc__},
+
+    {(char*)"startServer", (PyCFunction)XBMC_StartServer, METH_VARARGS|METH_KEYWORDS, startServer__doc__},
 
     {NULL, NULL, 0, NULL}
   };
@@ -1076,6 +1127,16 @@ namespace PYXBMC
     PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_DVDPLAYER", EPC_DVDPLAYER);
     PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_MPLAYER", EPC_MPLAYER);
     PyModule_AddIntConstant(pXbmcModule, (char*)"PLAYER_CORE_PAPLAYER", EPC_PAPLAYER);
+
+    // server constants for startServer method
+    PyModule_AddIntConstant(pXbmcModule, (char*)"SERVER_WEBSERVER", CApplication::ES_WEBSERVER);
+    PyModule_AddIntConstant(pXbmcModule, (char*)"SERVER_AIRPLAYSERVER", CApplication::ES_AIRPLAYSERVER);
+    PyModule_AddIntConstant(pXbmcModule, (char*)"SERVER_UPNPSERVER", CApplication::ES_UPNPSERVER);
+    PyModule_AddIntConstant(pXbmcModule, (char*)"SERVER_UPNPRENDERER", CApplication::ES_UPNPRENDERER);
+    PyModule_AddIntConstant(pXbmcModule, (char*)"SERVER_EVENTSERVER", CApplication::ES_EVENTSERVER);
+    PyModule_AddIntConstant(pXbmcModule, (char*)"SERVER_JSONRPCSERVER", CApplication::ES_JSONRPCSERVER);
+    PyModule_AddIntConstant(pXbmcModule, (char*)"SERVER_ZEROCONF", CApplication::ES_ZEROCONF);
+
 
     // dvd state constants
     PyModule_AddIntConstant(pXbmcModule, (char*)"TRAY_OPEN", TRAY_OPEN);

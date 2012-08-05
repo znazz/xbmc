@@ -33,7 +33,9 @@
 #include "guilib/GUIWindowManager.h"
 #include "settings/Settings.h"
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "threads/SingleLock.h"
+#include "utils/log.h"
 
 using namespace std;
 
@@ -425,13 +427,13 @@ namespace PYXBMC
       CPyThreadState pyState;
       ThreadMessage tMsg = {TMSG_GUI_PYTHON_DIALOG, WindowXMLDialog_Check(self) ? 1 : 0, 1};
       tMsg.lpVoid = self->pWindow;
-      g_application.getApplicationMessenger().SendMessage(tMsg, true);
+      CApplicationMessenger::Get().SendMessage(tMsg, true);
     }
     else
     {
       CPyThreadState pyState;
       vector<CStdString> params;
-      g_application.getApplicationMessenger().ActivateWindow(self->iWindowId, params, false);
+      CApplicationMessenger::Get().ActivateWindow(self->iWindowId, params, false);
     }
 
     Py_INCREF(Py_None);
@@ -463,13 +465,13 @@ namespace PYXBMC
       CPyThreadState pyState;
       ThreadMessage tMsg = {TMSG_GUI_PYTHON_DIALOG, WindowXMLDialog_Check(self) ? 1 : 0, 0};
       tMsg.lpVoid = self->pWindow;
-      g_application.getApplicationMessenger().SendMessage(tMsg, true);
+      CApplicationMessenger::Get().SendMessage(tMsg, true);
     }
     else
     {
       CPyThreadState pyState;
       vector<CStdString> params;
-      g_application.getApplicationMessenger().ActivateWindow(self->iOldWindowId, params, false);
+      CApplicationMessenger::Get().ActivateWindow(self->iOldWindowId, params, false);
     }
     self->iOldWindowId = 0;
 
@@ -536,6 +538,14 @@ namespace PYXBMC
 
       while (self->bModal && !g_application.m_bStop)
       {
+        // Check if XBPyThread::stop() raised a SystemExit exception
+        if (PyThreadState_Get()->async_exc == PyExc_SystemExit)
+        {
+          CLog::Log(LOGDEBUG, "PYTHON: doModal() encountered a SystemExit exception, closing window and returning");
+          Window_Close(self, NULL);
+          break;
+        }
+
         PyXBMC_MakePendingCalls();
 
         CPyThreadState pyState;
@@ -705,7 +715,7 @@ namespace PYXBMC
       CPyThreadState state;
       CGUIMessage msg(GUI_MSG_ADD_CONTROL, 0, 0);
       msg.SetPointer(pControl->pGUIControl);
-      g_application.getApplicationMessenger().SendGUIMessage(msg, self->iWindowId, wait);
+      CApplicationMessenger::Get().SendGUIMessage(msg, self->iWindowId, wait);
     }
     return true;
   }
@@ -746,7 +756,7 @@ namespace PYXBMC
       CPyThreadState state;
       CGUIMessage msg(GUI_MSG_REMOVE_CONTROL, 0, 0);
       msg.SetPointer(pControl->pGUIControl);
-      g_application.getApplicationMessenger().SendGUIMessage(msg, self->iWindowId, wait);
+      CApplicationMessenger::Get().SendGUIMessage(msg, self->iWindowId, wait);
     }
 
     // initialize control to zero

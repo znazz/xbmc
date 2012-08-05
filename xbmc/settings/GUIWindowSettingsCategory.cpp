@@ -23,6 +23,7 @@
 #include "GUIUserMessages.h"
 #include "GUIWindowSettingsCategory.h"
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "interfaces/Builtins.h"
 #include "input/KeyboardLayoutConfiguration.h"
 #include "filesystem/Directory.h"
@@ -51,7 +52,6 @@
 #include "addons/GUIDialogAddonSettings.h"
 #include "addons/GUIWindowAddonBrowser.h"
 #include "dialogs/GUIDialogContextMenu.h"
-#include "dialogs/GUIDialogKeyboard.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogProgress.h"
@@ -246,6 +246,9 @@ bool CGUIWindowSettingsCategory::OnMessage(CGUIMessage &message)
       m_delayedSetting = NULL;
       return true;
     }
+  case GUI_MSG_UPDATE:
+    if (HasID(message.GetSenderId()))
+      UpdateSettings();
     break;
   case GUI_MSG_NOTIFY_ALL:
     {
@@ -1098,20 +1101,7 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
   }
   else if (strSetting.Equals("debug.showloginfo"))
   {
-    if (g_guiSettings.GetBool("debug.showloginfo"))
-    {
-      int level = std::max(g_advancedSettings.m_logLevelHint, LOG_LEVEL_DEBUG_FREEMEM);
-      g_advancedSettings.m_logLevel = level;
-      CLog::SetLogLevel(level);
-      CLog::Log(LOGNOTICE, "Enabled debug logging due to GUI setting. Level %d.", level);
-    }
-    else
-    {
-      int level = std::min(g_advancedSettings.m_logLevelHint, LOG_LEVEL_DEBUG/*LOG_LEVEL_NORMAL*/);
-      CLog::Log(LOGNOTICE, "Disabled debug logging due to GUI setting. Level %d.", level);
-      g_advancedSettings.m_logLevel = level;
-      CLog::SetLogLevel(level);
-    }
+    g_advancedSettings.SetDebugMode(g_guiSettings.GetBool("debug.showloginfo"));
   }
   /*else if (strSetting.Equals("musicfiles.repeat"))
   {
@@ -1646,7 +1636,7 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
     if (CGUIDialogYesNo::ShowAndGetInput(14038, 14039, 14040, -1, -1))
     {
       g_settings.Save();
-      g_application.getApplicationMessenger().RestartApp();
+      CApplicationMessenger::Get().RestartApp();
     }
   }
   else if (strSetting.Equals("services.upnpserver"))
