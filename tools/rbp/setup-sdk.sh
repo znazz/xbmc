@@ -2,7 +2,7 @@
 
 SCRIPT_PATH=$(cd `dirname $0` && pwd)
 
-USE_BUILDROOT=1
+USE_BUILDROOT=0
 
 if [ "$USE_BUILDROOT" = "1" ]; then
   BUILDROOT=/opt/xbmc-bcm/buildroot
@@ -14,11 +14,11 @@ if [ "$USE_BUILDROOT" = "1" ]; then
   TOOLCHAIN=$BUILDROOT/output/host/usr/
 else
   TARBALLS=/opt/xbmc-tarballs
-  SDKSTAGE=/opt/bcm-rootfs
-  XBMCPREFIX=/opt/xbmc-bcm/xbmc-bin
-  TARGETFS=/opt/bcm-rootfs
-  TOOLCHAIN=/usr/local/bcm-gcc
-  BUILDROOT=/opt/bcm-rootfs
+  SDKSTAGE=/opt/bcm-rootfs-hardfp
+  XBMCPREFIX=/opt/xbmc-bcm-hardfp/xbmc-bin
+  TARGETFS=/opt/bcm-rootfs-hardfp
+  TOOLCHAIN=/usr/local/bcm-gcc-hardfp
+  BUILDROOT=/opt/bcm-rootfs-hardfp
 fi
 
 sudo mkdir -p $XBMCPREFIX

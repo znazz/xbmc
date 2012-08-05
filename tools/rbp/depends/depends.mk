@@ -22,18 +22,18 @@ ifeq ($(USE_BUILDROOT),1)
 	export TEXTUREPACKER_NATIVE_ROOT=/usr
 	export PYTHON_LDFLAGS=-L$(SDKSTAGE)/usr/lib -lpython$(PYTHON_VERSION) -lpthread -ldl -lutil -lm
 else
-	export CFLAGS=-pipe -O3 -mcpu=arm1176jzf-s -mtune=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp -mabi=aapcs-linux -Wno-psabi -Wa,-mno-warn-deprecated -Wno-deprecated-declarations -fomit-frame-pointer
-	export HOST=arm-bcm2708-linux-gnueabi
+	export CFLAGS=-pipe -O3 -mcpu=arm1176jzf-s -mtune=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp -mabi=aapcs-linux -Wno-psabi -Wa,-mno-warn-deprecated -Wno-deprecated-declarations -fomit-frame-pointer
+	export HOST=arm-bcm2708hardfp-linux-gnueabi
 	export BUILD=i686-linux
 	export PREFIX=${XBMCPREFIX}
 	export TARGETFS
-	export SYSROOT=/usr/local/bcm-gcc/arm-bcm2708-linux-gnueabi/sys-root
-	export RLINK_PATH=-Wl,-rpath-link,${SYSROOT}/lib -Wl,-rpath-link,${TARGETFS}/lib -Wl,-rpath-link,${TARGETFS}/usr/lib -Wl,-rpath-link,${TARGETFS}/opt/vc/
-	export CFLAGS+=-isystem${XBMCPREFIX}/include -isystem${SDKSTAGE}/usr/include -isystem${SDKSTAGE}/opt/vc/include -isystem$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -isystem${SDKSTAGE}/opt/vc 
-	export CFLAGS+=-L${XBMCPREFIX}/lib -L${SYSROOT}/lib -L${TARGETFS}/lib -L${TARGETFS}/usr/lib -L${TARGETFS}/opt/vc/lib ${RLINK_PATH}
+	export SYSROOT=/usr/local/bcm-gcc/arm-bcm2708hardfp-linux-gnueabi/sysroot
+	export RLINK_PATH=-Wl,-rpath-link,${SYSROOT}/lib -Wl,-rpath-link,${TARGETFS}/lib/arm-linux-gnueabihf -Wl,-rpath-link,${TARGETFS}/usr/lib/arm-linux-gnueabihf -Wl,-rpath-link,${TARGETFS}/lib -Wl,-rpath-link,${TARGETFS}/usr/lib -Wl,-rpath-link,${TARGETFS}/opt/vc/
+	export CFLAGS+=-isystem${XBMCPREFIX}/include -isystem${SDKSTAGE}/usr/include/arm-linux-gnueabihf -isystem${SDKSTAGE}/usr/include -isystem${SDKSTAGE}/usr/lib/arm-linux-gnueabihf/dbus-1.0/include -isystem${SDKSTAGE}/opt/vc/include -isystem$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -isystem${SDKSTAGE}/opt/vc
+	export CFLAGS+=-L${XBMCPREFIX}/lib -L${SYSROOT}/lib -L${TARGETFS}/lib -L${TARGETFS}/lib/arm-linux-gnueabihf -L${TARGETFS}/usr/lib -L${TARGETFS}/usr/lib/arm-linux-gnueabihf -L${TARGETFS}/opt/vc/lib ${RLINK_PATH}
 	export CXXFLAGS=${CFLAGS}
 	export CPPFLAGS=${CFLAGS}
-	export LDFLAGS=${RLINK_PATH} -L${TARGETFS}/lib -L${TARGETFS}/usr/lib -L${XBMCPREFIX}/lib
+	export LDFLAGS=${RLINK_PATH} -L${TARGETFS}/lib -L${TARGETFS}/lib/arm-linux-gnueabihf -L${TARGETFS}/usr/lib -L${TARGETFS}/usr/lib/arm-linux-gnueabihf -L${XBMCPREFIX}/lib
 	export LD=${TOOLCHAIN}/bin/${HOST}-ld
 	export AR=${TOOLCHAIN}/bin/${HOST}-ar
 	export CC=${TOOLCHAIN}/bin/${HOST}-gcc
@@ -43,9 +43,9 @@ else
 	export STRIP=${TOOLCHAIN}/bin/${HOST}-strip
 	export OBJDUMP=${TOOLCHAIN}/bin/${HOST}-objdump
 	#export ACLOCAL=aclocal -I ${SDKSTAGE}/usr/share/aclocal -I ${TARGETFS}/usr/share/aclocal-1.11
-	export PKG_CONFIG_LIBDIR=${PREFIX}/lib/pkgconfig:${SDKSTAGE}/lib/pkgconfig:${SDKSTAGE}/usr/lib/pkgconfig
+	export PKG_CONFIG_LIBDIR=${PREFIX}/lib/pkgconfig:${SDKSTAGE}/lib/pkgconfig:${SDKSTAGE}/usr/lib/pkgconfig:${SDKSTAGE}/usr/lib/arm-linux-gnueabihf/pkgconfig
 	export PKG_CONFIG_PATH=$(PREFIX)/bin/pkg-config
-	export PYTHON_VERSION=2.6
+	export PYTHON_VERSION=2.7
 	export PATH:=${PREFIX}/bin:$(PATH):${TOOLCHAIN}/bin
 	export TEXTUREPACKER_NATIVE_ROOT=/usr
 	export PYTHON_LDFLAGS=-L$(SDKSTAGE)/usr/lib -lpython$(PYTHON_VERSION)
