@@ -45,6 +45,7 @@ CGUIWindowPVRGuide::CGUIWindowPVRGuide(CGUIWindowPVR *parent) :
   m_iGuideView(g_guiSettings.GetInt("epg.defaultguideview"))
 {
   m_cachedTimeline = new CFileItemList;
+  m_cachedChannelGroup = CPVRChannelGroupPtr(new CPVRChannelGroup);
 }
 
 CGUIWindowPVRGuide::~CGUIWindowPVRGuide(void)
@@ -89,8 +90,8 @@ void CGUIWindowPVRGuide::GetContextButtons(int itemNumber, CContextButtons &butt
 
   if (pItem->GetEPGInfoTag()->EndAsLocalTime() > CDateTime::GetCurrentDateTime())
   {
-    CPVRTimerInfoTag *timer = g_PVRTimers->GetMatch(pItem->GetEPGInfoTag());
-    if (!timer)
+    CFileItemPtr timer = g_PVRTimers->GetMatch(pItem->GetEPGInfoTag());
+    if (!timer || !timer->HasPVRTimerInfoTag())
     {
       if (pItem->GetEPGInfoTag()->StartAsLocalTime() < CDateTime::GetCurrentDateTime())
         buttons.Add(CONTEXT_BUTTON_START_RECORD, 264);   /* record program */
@@ -170,7 +171,12 @@ void CGUIWindowPVRGuide::UpdateViewNow(bool bUpdateSelectedFile)
   m_parent->SetLabel(m_iControlButton, g_localizeStrings.Get(19222) + ": " + g_localizeStrings.Get(19030));
   m_parent->SetLabel(CONTROL_LABELGROUP, g_localizeStrings.Get(19030));
 
-  if (g_PVRManager.GetPlayingGroup(bRadio)->GetEPGNow(*m_parent->m_vecItems) == 0)
+  int iEpgItems = g_PVRManager.GetPlayingGroup(bRadio)->GetEPGNow(*m_parent->m_vecItems);
+  if (iEpgItems == 0 && bRadio)
+    // if we didn't get any events for radio, get tv instead
+    iEpgItems = g_PVRManager.GetPlayingGroup(false)->GetEPGNow(*m_parent->m_vecItems);
+
+  if (iEpgItems == 0)
   {
     CFileItemPtr item;
     item.reset(new CFileItem("pvr://guide/now/empty.epg", false));
@@ -193,7 +199,12 @@ void CGUIWindowPVRGuide::UpdateViewNext(bool bUpdateSelectedFile)
   m_parent->SetLabel(m_iControlButton, g_localizeStrings.Get(19222) + ": " + g_localizeStrings.Get(19031));
   m_parent->SetLabel(CONTROL_LABELGROUP, g_localizeStrings.Get(19031));
 
-  if (g_PVRManager.GetPlayingGroup(bRadio)->GetEPGNext(*m_parent->m_vecItems) == 0)
+  int iEpgItems = g_PVRManager.GetPlayingGroup(bRadio)->GetEPGNext(*m_parent->m_vecItems);
+  if (iEpgItems == 0 && bRadio)
+    // if we didn't get any events for radio, get tv instead
+    iEpgItems = g_PVRManager.GetPlayingGroup(false)->GetEPGNext(*m_parent->m_vecItems);
+
+  if (iEpgItems)
   {
     CFileItemPtr item;
     item.reset(new CFileItem("pvr://guide/next/empty.epg", false));
@@ -210,15 +221,23 @@ void CGUIWindowPVRGuide::UpdateViewTimeline(bool bUpdateSelectedFile)
   if (!m_parent->m_guideGrid)
     return;
 
-  if (m_bUpdateRequired || m_cachedTimeline->IsEmpty())
+  CPVRChannel CurrentChannel;
+  bool bGotCurrentChannel = g_PVRManager.GetCurrentChannel(CurrentChannel);
+  bool bRadio = bGotCurrentChannel ? CurrentChannel.IsRadio() : false;
+
+  if (m_bUpdateRequired || m_cachedTimeline->IsEmpty() ||
+      *m_cachedChannelGroup != *g_PVRManager.GetPlayingGroup(bRadio))
   {
     m_bUpdateRequired = false;
-    CPVRChannel CurrentChannel;
-    bool bGotCurrentChannel = g_PVRManager.GetCurrentChannel(CurrentChannel);
-    bool bRadio = bGotCurrentChannel ? CurrentChannel.IsRadio() : false;
 
     m_cachedTimeline->Clear();
-    g_PVRManager.GetPlayingGroup(bRadio)->GetEPGAll(*m_cachedTimeline);
+    m_cachedChannelGroup = g_PVRManager.GetPlayingGroup(bRadio);
+    if (m_cachedChannelGroup->GetEPGAll(*m_cachedTimeline) == 0 && bRadio)
+    {
+      // if we didn't get any events for radio, get tv instead
+      m_cachedChannelGroup = g_PVRManager.GetPlayingGroup(false);
+      m_cachedChannelGroup->GetEPGAll(*m_cachedTimeline);
+    }
   }
 
   m_parent->m_vecItems->RemoveDiscCache(m_parent->GetID());
@@ -405,8 +424,9 @@ bool CGUIWindowPVRGuide::OnContextButtonInfo(CFileItem *item, CONTEXT_BUTTON but
 
 bool CGUIWindowPVRGuide::PlayEpgItem(CFileItem *item)
 {
-  const CPVRChannel *channel = !item || !item->HasEPGInfoTag() || !item->GetEPGInfoTag()->HasPVRChannel() ?
-      NULL : item->GetEPGInfoTag()->ChannelTag();
+  CPVRChannelPtr channel;
+  if (item && item->HasEPGInfoTag() && item->GetEPGInfoTag()->HasPVRChannel())
+    channel = item->GetEPGInfoTag()->ChannelTag();
   if (!channel)
     return false;
 

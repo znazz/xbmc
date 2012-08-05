@@ -23,6 +23,7 @@
 #include "PVRClient.h"
 
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "settings/GUISettings.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogSelect.h"
@@ -524,7 +525,7 @@ bool CPVRClients::SwitchChannel(const CPVRChannel &channel)
       {
         // StreamURL should always be opened as a new file
         CFileItem m_currentFile(channel);
-        g_application.getApplicationMessenger().PlayFile(m_currentFile, false);
+        CApplicationMessenger::Get().PlayFile(m_currentFile, false);
         bSwitchSuccessful = true;
         bNewStreamOpened = true;
       }
@@ -756,7 +757,7 @@ bool CPVRClients::HasRecordingsSupport(int iClientId)
 
 int CPVRClients::GetRecordings(CPVRRecordings *recordings)
 {
-  int iCurSize = recordings->size();
+  int iCurSize = recordings->GetNumRecordings();
   CLIENTMAP clients;
   GetConnectedClients(&clients);
 
@@ -771,7 +772,7 @@ int CPVRClients::GetRecordings(CPVRRecordings *recordings)
     itrClients++;
   }
 
-  return recordings->size() - iCurSize;
+  return recordings->GetNumRecordings() - iCurSize;
 }
 
 bool CPVRClients::RenameRecording(const CPVRRecording &recording, PVR_ERROR *error)
@@ -900,7 +901,7 @@ bool CPVRClients::HasChannelGroupSupport(int iClientId)
 int CPVRClients::GetChannelGroups(CPVRChannelGroups *groups, PVR_ERROR *error)
 {
   *error = PVR_ERROR_UNKNOWN;
-  int iCurSize = groups->size();
+  int iCurSize = groups->Size();
   CLIENTMAP clients;
   GetConnectedClients(&clients);
 
@@ -916,7 +917,7 @@ int CPVRClients::GetChannelGroups(CPVRChannelGroups *groups, PVR_ERROR *error)
     itrClients++;
   }
 
-  return groups->size() - iCurSize;
+  return groups->Size() - iCurSize;
 }
 
 int CPVRClients::GetChannelGroupMembers(CPVRChannelGroup *group, PVR_ERROR *error)
@@ -1004,21 +1005,27 @@ bool CPVRClients::IsRunningChannelScan(void) const
   return m_bChannelScanRunning;
 }
 
-void CPVRClients::StartChannelScan(void)
+vector< boost::shared_ptr<CPVRClient> > CPVRClients::GetClientsSupportingChannelScan(void) const
 {
-  CLIENTMAP clients;
   vector< boost::shared_ptr<CPVRClient> > possibleScanClients;
-  boost::shared_ptr<CPVRClient> scanClient;
   CSingleLock lock(m_critSection);
-  GetConnectedClients(&clients);
-  m_bChannelScanRunning = true;
 
   /* get clients that support channel scanning */
-  for (CLIENTMAPITR itr = m_clientMap.begin(); itr != m_clientMap.end(); itr++)
+  for (CLIENTMAPCITR itr = m_clientMap.begin(); itr != m_clientMap.end(); itr++)
   {
     if (itr->second->ReadyToUse() && itr->second->GetAddonCapabilities().bSupportsChannelScan)
       possibleScanClients.push_back(itr->second);
   }
+
+  return possibleScanClients;
+}
+
+void CPVRClients::StartChannelScan(void)
+{
+  boost::shared_ptr<CPVRClient> scanClient;
+  CSingleLock lock(m_critSection);
+  vector< boost::shared_ptr<CPVRClient> > possibleScanClients = GetClientsSupportingChannelScan();
+  m_bChannelScanRunning = true;
 
   /* multiple clients found */
   if (possibleScanClients.size() > 1)

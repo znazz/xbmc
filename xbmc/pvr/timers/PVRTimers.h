@@ -72,15 +72,14 @@ namespace PVR
      */
     int GetTimers(CFileItemList* results);
 
-    /**
-     * The timer that will be active next.
-     * Returns false if there is none.
+    /*!
+     * @return The timer that will be active next, or NULL if none
      */
-    bool GetNextActiveTimer(CPVRTimerInfoTag *tag) const;
+    CFileItemPtr GetNextActiveTimer(void) const;
 
-    int GetActiveTimers(std::vector<CPVRTimerInfoTag *> *tags) const;
+    std::vector<CFileItemPtr> GetActiveTimers(void) const;
 
-    int GetActiveRecordings(std::vector<CPVRTimerInfoTag *> *tags) const;
+    std::vector<CFileItemPtr> GetActiveRecordings(void) const;
     /**
      * The amount of timers in this container.
      */
@@ -119,7 +118,7 @@ namespace PVR
      * @param bStartTimer True to start the timer instantly, false otherwise.
      * @return The new timer or NULL if it couldn't be created.
      */
-    CPVRTimerInfoTag *InstantTimer(CPVRChannel *channel, bool bStartTimer = true);
+    CPVRTimerInfoTag *InstantTimer(const CPVRChannel &channel, bool bStartTimer = true);
 
     /*!
      * @return Next event time (timer or daily wake up)
@@ -179,8 +178,8 @@ namespace PVR
     bool IsRecording(void);
     bool UpdateEntries(CPVRTimers *timers);
     CPVRTimerInfoTag *GetByClient(int iClientId, int iClientTimerId);
-    CPVRTimerInfoTag *GetMatch(const EPG::CEpgInfoTag *Epg);
-    CPVRTimerInfoTag *GetMatch(const CFileItem *item);
+    CFileItemPtr GetMatch(const EPG::CEpgInfoTag *Epg);
+    CFileItemPtr GetMatch(const CFileItem *item);
     virtual void Notify(const Observable &obs, const CStdString& msg);
     bool IsRecordingOnChannel(const CPVRChannel &channel) const;
 
