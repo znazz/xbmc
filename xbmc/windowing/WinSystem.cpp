@@ -46,7 +46,7 @@ CWinSystemBase::~CWinSystemBase()
 bool CWinSystemBase::InitWindowSystem()
 {
   UpdateResolutions();
-
+  g_settings.ApplyCalibrations();
   return true;
 }
 

@@ -21,9 +21,9 @@
 
 #include "GUIWindowPVRTimers.h"
 
+#include "guilib/GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogYesNo.h"
-#include "guilib/GUIKeyboardFactory.h"
 #include "guilib/GUIWindowManager.h"
 #include "pvr/PVRManager.h"
 #include "pvr/timers/PVRTimers.h"

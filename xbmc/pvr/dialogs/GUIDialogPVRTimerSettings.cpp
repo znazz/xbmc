@@ -20,9 +20,9 @@
  */
 
 #include "GUIDialogPVRTimerSettings.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogNumeric.h"
 #include "settings/GUISettings.h"
-#include "guilib/GUIKeyboardFactory.h"
 #include "guilib/LocalizeStrings.h"
 
 #include "pvr/PVRManager.h"
